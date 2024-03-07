@@ -6,11 +6,15 @@ import numpy as np
 import requests
 from io import BytesIO
 import matplotlib.pyplot as plt
+import tempfile
 
 @st.cache
 def load_image(url):
     response = requests.get(url)
-    img_data = scipy.io.loadmat(BytesIO(response.content))['images']
+    # Create a temporary file to store the downloaded .mat file
+    with tempfile.NamedTemporaryFile(suffix=".mat") as fp:
+        fp.write(response.content)
+        img_data = scipy.io.loadmat(fp.name)['images']
     img = Image.fromarray(np.uint8(img_data.squeeze()))
     return img, img_data
 
