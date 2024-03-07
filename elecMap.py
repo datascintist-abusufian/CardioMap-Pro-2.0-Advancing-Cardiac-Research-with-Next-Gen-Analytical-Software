@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 @st.cache
 def load_image(url):
     response = requests.get(url)
-    img_data = scipy.io.loadmat(BytesIO(response.content))['images']
-    img = Image.fromarray(np.uint8(img_data.squeeze()))
+    img = Image.open(BytesIO(response.content))
+    img_data = np.array(img)
     return img, img_data
 
 def main():
