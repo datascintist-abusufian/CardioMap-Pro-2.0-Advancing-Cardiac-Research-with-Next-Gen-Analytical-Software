@@ -1,12 +1,11 @@
 # import numpy as np
 # import matplotlib.pyplot as plt
 # import os
-
 try:
     import tkinter as tk
 except ImportError as e:
     raise ImportError("Tkinter is not available in this Python environment. Please ensure you have Tkinter installed and properly configured. If you are using a virtual environment, you might need to reinstall Python with Tkinter support or activate a different environment that has Tkinter.") from e
-    
+
 import os
 import tkinter as tk
 import scipy.io
