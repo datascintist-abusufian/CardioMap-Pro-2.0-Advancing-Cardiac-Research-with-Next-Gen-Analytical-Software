@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 @st.cache
 def load_image(url):
     response = requests.get(url)
-    img = Image.open(BytesIO(response.content))
-    img_data = np.array(img)
+    img_data = scipy.io.loadmat(BytesIO(response.content))['images']
+    img = Image.fromarray(np.uint8(img_data.squeeze()))
     return img, img_data
 
 def main():
@@ -27,7 +27,10 @@ def main():
 
     file_index = st.sidebar.slider("Select an image", 0, len(mat_files) - 1)
 
-    img, img_data = load_image(mat_files[file_index]['download_url'])
+    # Construct the raw GitHub URL for the selected file
+    raw_url = mat_files[file_index]['download_url'].replace("https://github.com", "https://raw.githubusercontent.com").replace("/blob", "")
+
+    img, img_data = load_image(raw_url)
 
     st.image(img, use_column_width=True)
 
