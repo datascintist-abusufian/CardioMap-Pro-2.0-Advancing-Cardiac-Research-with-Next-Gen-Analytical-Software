@@ -22,30 +22,6 @@ def load_image(url):
         return None, None
 
 # The rest of your functions go here...
-import streamlit as st
-import requests
-from io import BytesIO
-import scipy.io
-from PIL import Image
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-
-@st.cache(allow_output_mutation=True)
-def load_image(url):
-    """Load .mat data from a given URL."""
-    response = requests.get(url)
-    if response.status_code == 200:
-        content = BytesIO(response.content)
-        mat_data = scipy.io.loadmat(content)
-        img_data = mat_data['image_data']
-        img = Image.fromarray(np.uint8(img_data.squeeze()))
-        return img, img_data
-    else:
-        st.error("Failed to load data from URL.")
-        return None, None
-
-# The rest of your functions go here...
 
 def main():
     st.title("Image Viewer and Data Analysis")
