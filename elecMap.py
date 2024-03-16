@@ -5,15 +5,56 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import requests
+from io import BytesIO
 
-@st.cache_data
-def load_image(file_path):
-    mat_data = scipy.io.loadmat(file_path)
-    img_data = mat_data['image_data']
-    img = Image.fromarray(np.uint8(img_data.squeeze()))
-    return img, img_data
+# GitHub repository details
+GITHUB_REPO = "datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software"
+MAT_API_DIR = "mat_api"
 
-def velocity_analysis(data):
+@st.cache
+def get_mat_files_from_github(repo_path, folder_path):
+    """Fetch list of .mat files from GitHub directory."""
+    api_url = f"https://api.github.com/repos/{repo_path}/contents/{folder_path}"
+    response = requests.get(api_url)
+    if response.status_code == 200:
+        files = response.json()
+        return [file for file in files if file['name'].endswith('.mat')]
+    else:
+        st.error("Failed to fetch files from GitHub")
+        return []
+
+@st.cache
+def load_image_from_url(url):
+    """Load image data from a .mat file URL."""
+    response = requests.get(url)
+    if response.status_code == 200:
+        content = BytesIO(response.content)
+        mat_data = scipy.io.loadmat(content)
+        img_data = mat_data.get('image_data', None)
+        if img_data is not None:
+            img = Image.fromarray(np.uint8(img_data.squeeze()))
+            return img, img_data
+    st.error("Failed to load image from URL")
+    return None, None
+
+def main():
+    st.title("MAT File Image Analyzer")
+    
+    mat_files = get_mat_files_from_github(GITHUB_REPO, MAT_API_DIR)
+    if not mat_files:
+        st.write("No .mat files found.")
+        return
+    
+    file_names = [file['name'] for file in mat_files]
+    selected_file_name = st.selectbox("Select a .mat file:", file_names)
+    selected_file = next((file for file in mat_files if file['name'] == selected_file_name), None)
+
+    if selected_file:
+        img, img_data = load_image_from_url(selected_file['download_url'])
+        if img is not None:
+            st.image(img, use_column_width=True)
+          def velocity_analysis(data):
     # Calculate the mean and standard deviation of the pixel values
     mean = np.mean(data)
     std = np.std(data)
