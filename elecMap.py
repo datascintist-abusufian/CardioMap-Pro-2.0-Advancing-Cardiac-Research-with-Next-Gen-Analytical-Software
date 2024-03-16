@@ -21,7 +21,115 @@ def load_image(url):
         st.error("Failed to load data from URL.")
         return None, None
 
-# The rest of your functions go here...
+def velocity_analysis(data):
+    # Calculate the mean and standard deviation of the pixel values
+    mean = np.mean(data)
+    std = np.std(data)
+    st.write(f"Mean pixel value: {mean}")
+    st.write(f"Standard deviation of pixel values: {std}")
+
+def histogram_analysis(data):
+    # Create a new figure and axes
+    fig, ax = plt.subplots()
+
+    # Perform your plotting actions
+    ax.hist(data.ravel(), bins=256, color='orange')
+    ax.hist(data.ravel(), bins=256, color='black')
+
+    # Pass the figure to st.pyplot()
+    st.pyplot(fig)
+    
+def accuracy_display(data):
+    # Calculate the proportion of pixels that are above a certain threshold
+    threshold = 128  # replace with your actual threshold
+    accuracy = np.mean(data > threshold)
+    st.write(f"Proportion of pixels above threshold: {accuracy}")
+    
+def electromapping(data):
+    # Apply a Fourier transform to the data
+    electromap = np.fft.fft2(data)
+    # Take the logarithm of the absolute value of the Fourier transform
+    log_electromap = np.log1p(np.abs(electromap))
+    # Normalize the data to the range [0.0, 1.0]
+    normalized_electromap = (log_electromap - np.min(log_electromap)) / (np.max(log_electromap) - np.min(log_electromap))
+    # Apply a colormap to the data
+    colored_electromap = cm.hot(normalized_electromap)
+    st.image(colored_electromap, use_column_width=True)
+
+def signal_processing(data):
+    # Apply an inverse Fourier transform to the data
+    processed_signal = np.fft.ifft2(data)
+    # Take the absolute value of the processed signal
+    abs_processed_signal = np.abs(processed_signal)
+    # Apply a logarithmic function to the data
+    log_processed_signal = np.log1p(abs_processed_signal)
+    # Normalize the data to the range [0.0, 1.0]
+    normalized_signal = (log_processed_signal - np.min(log_processed_signal)) / (np.max(log_processed_signal) - np.min(log_processed_signal))
+    st.image(normalized_signal, use_column_width=True)
+
+def region_selection(data):
+    # Dynamic adjustment based on data dimensions
+    max_row, max_col = data.shape[0], data.shape[1]
+    
+    # Streamlit sliders for dynamic region selection
+    start_row = st.sidebar.number_input('Start Row', min_value=0, max_value=max_row-1, value=0)
+    end_row = st.sidebar.number_input('End Row', min_value=0, max_value=max_row, value=max_row)
+    start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-1, value=0)
+    end_col = st.sidebar.number_input('End Column', min_value=0, max_value=max_col, value=max_col)
+    
+    # Select and display the region
+    region = data[start_row:end_row, start_col:end_col]
+    if np.ptp(region) == 0:  # Checking if the selected region is uniform
+        st.write("The selected region is uniform or empty.")
+    else:
+        normalized_region = (region - np.min(region)) / (np.max(region) - np.min(region))
+        st.image(normalized_region, caption="Selected Region", use_column_width=True)
+
+def automatically_segmented_signal(data):
+    # Define a threshold for segmentation
+    threshold = np.mean(data)  # replace with your actual threshold
+
+    # Apply the threshold to the data
+    segmented_signal = np.where(data > threshold, 1, 0)
+
+    # Scale the segmented signal to the range [0, 255]
+    segmented_signal = segmented_signal * 255
+
+    # Display the segmented signal
+    st.image(segmented_signal.astype(np.uint8), use_column_width=True)
+
+def activation_map(data):
+    # Define a threshold for activation
+    threshold = 0.01 * np.max(data)
+
+    # Calculate the activation map
+    activation_map = np.argmax(data > threshold, axis=2)
+
+    st.write(f"Activation Map: {activation_map}")
+
+def display_analysis_option(data):
+    # Placeholder for a more complex analysis, e.g., finding areas with specific properties
+    threshold = np.mean(data) + np.std(data)  # Example threshold
+    areas_above_threshold = np.sum(data > threshold)
+    st.write(f"Areas above threshold (mean + std): {areas_above_threshold}")
+
+def diastolic_interval(data):
+    # Example calculation: Variability of the signal (assuming variability might relate to diastolic intervals)
+    variability = np.std(data)
+    st.write(f"Signal variability (potential proxy for diastolic interval variability): {variability}")
+
+def repolarisation(data):
+    # Placeholder: Assuming higher values might indicate repolarization regions
+    high_value_threshold = np.percentile(data, 90)  # 90th percentile as a high-value threshold
+    high_value_areas = np.sum(data > high_value_threshold)
+    st.write(f"Areas potentially representing repolarisation (above 90th percentile): {high_value_areas}")
+
+def APD(data):
+    # Example assuming APD relates to the duration of certain signal levels
+    # This is highly simplified and not directly applicable without knowing data structure
+    duration_threshold = np.mean(data)  # Simplified threshold
+    potential_apd_areas = np.sum(data > duration_threshold)
+    st.write(f"Areas with potential APD (above mean value): {potential_apd_areas}")
 
 def main():
     st.title("Image Viewer and Data Analysis")
