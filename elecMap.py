@@ -32,7 +32,7 @@ def main():
     repo_url = 'https://api.github.com/repos/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/contents/mat_api'
     
     # Use your GitHub personal access token
-    headers = {'Authorization': 'token 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'}
+    headers = {'Authorization': 'token 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'}
     
     response = requests.get(repo_url, headers=headers)
     if response.status_code != 200:
