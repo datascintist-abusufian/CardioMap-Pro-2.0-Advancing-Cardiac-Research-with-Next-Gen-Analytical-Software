@@ -1,16 +1,15 @@
 import streamlit as st
-import os
-import scipy.io
-from PIL import Image
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import requests
 from io import BytesIO
+import scipy.io
+import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
-# GitHub repository details
+# Constants for GitHub access
 GITHUB_REPO = "datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software"
-MAT_API_DIR = "mat_api"
+MAT_API_DIR = "main/mat_api"
 
 @st.cache
 def get_mat_files_from_github(repo_path, folder_path):
@@ -19,41 +18,51 @@ def get_mat_files_from_github(repo_path, folder_path):
     response = requests.get(api_url)
     if response.status_code == 200:
         files = response.json()
-        return [file for file in files if file['name'].endswith('.mat')]
+        mat_files = [file for file in files if file['name'].endswith('.mat')]
+        return mat_files
     else:
         st.error("Failed to fetch files from GitHub")
         return []
 
-@st.cache
-def load_image_from_url(url):
-    """Load image data from a .mat file URL."""
+@st.cache(allow_output_mutation=True)
+def load_mat_data_from_url(url):
+    """Load .mat data from a URL."""
     response = requests.get(url)
     if response.status_code == 200:
-        content = BytesIO(response.content)
-        mat_data = scipy.io.loadmat(content)
-        img_data = mat_data.get('image_data', None)
-        if img_data is not None:
-            img = Image.fromarray(np.uint8(img_data.squeeze()))
-            return img, img_data
-    st.error("Failed to load image from URL")
-    return None, None
+        mat_content = BytesIO(response.content)
+        mat_data = scipy.io.loadmat(mat_content)
+        return mat_data
+    else:
+        st.error("Failed to load data from URL")
+        return None
+
+def display_image_from_mat_data(mat_data, data_key='image_data'):
+    """Display image from .mat data."""
+    if data_key in mat_data:
+        img_data = mat_data[data_key]
+        if img_data.ndim == 3:
+            img_data = np.mean(img_data, axis=2)  # Convert to grayscale if RGB
+        img = Image.fromarray(np.uint8(img_data))
+        st.image(img, use_column_width=True)
+    else:
+        st.write(f"No data found under key '{data_key}'.")
 
 def main():
-    st.title("MAT File Image Analyzer")
-    
+    """Main function to run the Streamlit app."""
+    st.title("MAT File Image Analyzer from GitHub")
+
+    # Fetch and display .mat files from GitHub
     mat_files = get_mat_files_from_github(GITHUB_REPO, MAT_API_DIR)
-    if not mat_files:
-        st.write("No .mat files found.")
-        return
-    
     file_names = [file['name'] for file in mat_files]
     selected_file_name = st.selectbox("Select a .mat file:", file_names)
     selected_file = next((file for file in mat_files if file['name'] == selected_file_name), None)
 
     if selected_file:
-        img, img_data = load_image_from_url(selected_file['download_url'])
-        if img is not None:
-            st.image(img, use_column_width=True)
+        # Load and display selected .mat file data
+        mat_data = load_mat_data_from_url(selected_file['download_url'])
+        if mat_data:
+            display_image_from_mat_data(mat_data)
+
 def velocity_analysis(data):
     # Calculate the mean and standard deviation of the pixel values
     mean = np.mean(data)
