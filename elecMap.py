@@ -180,55 +180,6 @@ def main():
 
         if st.sidebar.checkbox("APD"):
             APD(img_data)
-def main():
-    st.title("Image Viewer and Data Analysis")
-
-    # List of URLs to the .mat files in the GitHub repository
-    mat_files = [
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_1.mat",
-        # Add more URLs as needed
-    ]
-
-    file_index = st.sidebar.slider("Select an image", 0, len(mat_files) - 1)
-    img, img_data = load_image(mat_files[file_index])
-    if img is not None and img_data is not None:
-        st.image(img, use_column_width=True)
-
-        if st.sidebar.checkbox("Velocity Analysis"):
-            velocity_analysis(img_data)
-
-        if st.sidebar.checkbox("Histogram Analysis"):
-            histogram_analysis(img_data)
-
-        if st.sidebar.checkbox("Accuracy Display"):
-            accuracy_display(img_data)
-
-        if st.sidebar.checkbox("Electromapping"):
-            electromapping(img_data)
-
-        if st.sidebar.checkbox("Signal Processing"):
-            signal_processing(img_data)
-
-        if st.sidebar.checkbox("Region Selection"):
-            region_selection(img_data)
-
-        if st.sidebar.checkbox("Automatically Segmented Signal"):
-            automatically_segmented_signal(img_data)
-
-        if st.sidebar.checkbox("Activation Map"):
-            activation_map(img_data)
-
-        if st.sidebar.checkbox("Display Analysis Option"):
-            display_analysis_option(img_data)
-
-        if st.sidebar.checkbox("Diastolic Interval"):
-            diastolic_interval(img_data)
-
-        if st.sidebar.checkbox("Repolarisation"):
-            repolarisation(img_data)
-
-        if st.sidebar.checkbox("APD"):
-            APD(img_data)
 
 if __name__ == "__main__":
     main()
