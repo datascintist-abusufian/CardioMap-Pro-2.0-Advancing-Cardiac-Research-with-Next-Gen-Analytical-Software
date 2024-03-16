@@ -54,7 +54,7 @@ def main():
         img, img_data = load_image_from_url(selected_file['download_url'])
         if img is not None:
             st.image(img, use_column_width=True)
-          def velocity_analysis(data):
+def velocity_analysis(data):
     # Calculate the mean and standard deviation of the pixel values
     mean = np.mean(data)
     std = np.std(data)
