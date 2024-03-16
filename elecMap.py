@@ -8,22 +8,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-# GitHub repository and directory details
-GITHUB_REPO = "datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software"
-MAT_API_DIR = "mat_api"
-
-@st.cache
-def get_mat_files_from_github(repo_path, folder_path):
-    """Fetch list of .mat files from a specified GitHub directory."""
-    api_url = f"https://api.github.com/repos/{repo_path}/contents/{folder_path}"
-    response = requests.get(api_url)
-    if response.status_code == 200:
-        files = response.json()
-        return [file for file in files if file['name'].endswith('.mat')]
-    else:
-        st.error("Failed to fetch files from GitHub.")
-        return []
-
 @st.cache(allow_output_mutation=True)
 def load_mat_data_from_url(url):
     """Load .mat data from a given URL."""
@@ -60,22 +44,12 @@ def activation_map(data):
 def main():
     st.title("Streamlit MAT File Analyzer")
 
-    mat_files = get_mat_files_from_github(GITHUB_REPO, MAT_API_DIR)
-    if not mat_files:
-        st.write("No .mat files found in the specified directory.")
-        return
-
-    file_names = [file['name'] for file in mat_files]
-    selected_file_name = st.selectbox("Select a .mat file:", file_names)
-    selected_file = next((file for file in mat_files if file['name'] == selected_file_name), None)
-
-    if selected_file:
-        mat_data = load_mat_data_from_url(selected_file['download_url'])
-        if mat_data:
-            # Display the .mat file data
-            display_mat_data(mat_data)
-            # Display the activation map
-            activation_map(mat_data)
+    mat_data = load_mat_data_from_url("https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_1.mat")
+    if mat_data:
+        # Display the .mat file data
+        display_mat_data(mat_data)
+        # Display the activation map
+        activation_map(mat_data)
 
 if __name__ == "__main__":
     main()
