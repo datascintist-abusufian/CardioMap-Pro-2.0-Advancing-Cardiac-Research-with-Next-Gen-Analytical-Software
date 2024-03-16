@@ -1,72 +1,171 @@
 import streamlit as st
+import os
 import scipy.io
 from PIL import Image
 import numpy as np
-import requests
 import matplotlib.pyplot as plt
-import tempfile
-import os
+import matplotlib.cm as cm
 
-@st.cache
-def load_image(url, headers):
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise Exception(f"Failed to download image from {url}")
-    with tempfile.NamedTemporaryFile(suffix=".mat", delete=False) as fp:
-        fp.write(response.content)
-        fp.flush()
-        os.fsync(fp.fileno())
-    try:
-        mat_content = scipy.io.loadmat(fp.name)
-        if 'images' not in mat_content:
-            raise KeyError("'images' key not found in the .mat file.")
-        img_data = mat_content['images']
-        img = Image.fromarray(np.uint8(img_data.squeeze()))
-    finally:
-        os.remove(fp.name)
+@st.cache_data
+def load_image(file_path):
+    mat_data = scipy.io.loadmat(file_path)
+    img_data = mat_data['image_data']
+    img = Image.fromarray(np.uint8(img_data.squeeze()))
     return img, img_data
 
+def velocity_analysis(data):
+    # Calculate the mean and standard deviation of the pixel values
+    mean = np.mean(data)
+    std = np.std(data)
+    st.write(f"Mean pixel value: {mean}")
+    st.write(f"Standard deviation of pixel values: {std}")
+
+def histogram_analysis(data):
+    # Create a new figure and axes
+    fig, ax = plt.subplots()
+
+    # Perform your plotting actions
+    ax.hist(data.ravel(), bins=256, color='orange')
+    ax.hist(data.ravel(), bins=256, color='black')
+
+    # Pass the figure to st.pyplot()
+    st.pyplot(fig)
+    
+def accuracy_display(data):
+    # Calculate the proportion of pixels that are above a certain threshold
+    threshold = 128  # replace with your actual threshold
+    accuracy = np.mean(data > threshold)
+    st.write(f"Proportion of pixels above threshold: {accuracy}")
+    
+def electromapping(data):
+    # Apply a Fourier transform to the data
+    electromap = np.fft.fft2(data)
+    # Take the logarithm of the absolute value of the Fourier transform
+    log_electromap = np.log1p(np.abs(electromap))
+    # Normalize the data to the range [0.0, 1.0]
+    normalized_electromap = (log_electromap - np.min(log_electromap)) / (np.max(log_electromap) - np.min(log_electromap))
+    # Apply a colormap to the data
+    colored_electromap = cm.hot(normalized_electromap)
+    st.image(colored_electromap, use_column_width=True)
+
+def signal_processing(data):
+    # Apply an inverse Fourier transform to the data
+    processed_signal = np.fft.ifft2(data)
+    # Take the absolute value of the processed signal
+    abs_processed_signal = np.abs(processed_signal)
+    # Apply a logarithmic function to the data
+    log_processed_signal = np.log1p(abs_processed_signal)
+    # Normalize the data to the range [0.0, 1.0]
+    normalized_signal = (log_processed_signal - np.min(log_processed_signal)) / (np.max(log_processed_signal) - np.min(log_processed_signal))
+    st.image(normalized_signal, use_column_width=True)
+
+def region_selection(data):
+    # Dynamic adjustment based on data dimensions
+    max_row, max_col = data.shape[0], data.shape[1]
+    
+    # Streamlit sliders for dynamic region selection
+    start_row = st.sidebar.number_input('Start Row', min_value=0, max_value=max_row-1, value=0)
+    end_row = st.sidebar.number_input('End Row', min_value=0, max_value=max_row, value=max_row)
+    start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-1, value=0)
+    end_col = st.sidebar.number_input('End Column', min_value=0, max_value=max_col, value=max_col)
+    
+    # Select and display the region
+    region = data[start_row:end_row, start_col:end_col]
+    if np.ptp(region) == 0:  # Checking if the selected region is uniform
+        st.write("The selected region is uniform or empty.")
+    else:
+        normalized_region = (region - np.min(region)) / (np.max(region) - np.min(region))
+        st.image(normalized_region, caption="Selected Region", use_column_width=True)
+
+def automatically_segmented_signal(data):
+    # Define a threshold for segmentation
+    threshold = np.mean(data)  # replace with your actual threshold
+
+    # Apply the threshold to the data
+    segmented_signal = np.where(data > threshold, 1, 0)
+
+    # Scale the segmented signal to the range [0, 255]
+    segmented_signal = segmented_signal * 255
+
+    # Display the segmented signal
+    st.image(segmented_signal.astype(np.uint8), use_column_width=True)
+
+def activation_map(data):
+    # Define a threshold for activation
+    threshold = 0.01 * np.max(data)
+
+    # Calculate the activation map
+    activation_map = np.argmax(data > threshold, axis=2)
+
+    st.write(f"Activation Map: {activation_map}")
+
+def display_analysis_option(data):
+    # Placeholder for a more complex analysis, e.g., finding areas with specific properties
+    threshold = np.mean(data) + np.std(data)  # Example threshold
+    areas_above_threshold = np.sum(data > threshold)
+    st.write(f"Areas above threshold (mean + std): {areas_above_threshold}")
+
+def diastolic_interval(data):
+    # Example calculation: Variability of the signal (assuming variability might relate to diastolic intervals)
+    variability = np.std(data)
+    st.write(f"Signal variability (potential proxy for diastolic interval variability): {variability}")
+
+def repolarisation(data):
+    # Placeholder: Assuming higher values might indicate repolarization regions
+    high_value_threshold = np.percentile(data, 90)  # 90th percentile as a high-value threshold
+    high_value_areas = np.sum(data > high_value_threshold)
+    st.write(f"Areas potentially representing repolarisation (above 90th percentile): {high_value_areas}")
+
+def APD(data):
+    # Example assuming APD relates to the duration of certain signal levels
+    # This is highly simplified and not directly applicable without knowing data structure
+    duration_threshold = np.mean(data)  # Simplified threshold
+    potential_apd_areas = np.sum(data > duration_threshold)
+    st.write(f"Areas with potential APD (above mean value): {potential_apd_areas}")
 def main():
     st.title("Image Viewer and Data Analysis")
-    
-    repo_url = 'https://api.github.com/repos/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/contents/mat_api'
-    
-    # Use your GitHub personal access token
-    headers = {'Authorization': 'token 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'}
-    
-    response = requests.get(repo_url, headers=headers)
-    if response.status_code != 200:
-        st.error(f"Failed to fetch data from the GitHub API. Status code: {response.status_code}, Response: {response.text}")
-        st.stop()
 
-    try:
-        files = response.json()
-    except ValueError:
-        st.error("Invalid response received from the GitHub API.")
-        st.stop()
-
-    if not isinstance(files, list):
-        st.error("Unexpected format received from the GitHub API. Expected a list of files.")
-        st.stop()
-
-    mat_files = [file for file in files if file['name'].endswith('.mat')]
-    if not mat_files:
-        st.error("No .mat files found.")
-        st.stop()
-
+    local_dir = '/Users/mdabusufian/Downloads/balil/mat_api'
+    mat_files = [os.path.join(local_dir, file) for file in os.listdir(local_dir) if file.endswith('.mat')]
     file_index = st.sidebar.slider("Select an image", 0, len(mat_files) - 1)
-    
-    raw_url = mat_files[file_index]['download_url'].replace("https://github.com", "https://raw.githubusercontent.com").replace("/blob", "")
-    
-    img, img_data = load_image(raw_url, headers)
-    
+    img, img_data = load_image(mat_files[file_index])
     st.image(img, use_column_width=True)
-    
-    if st.sidebar.checkbox("Show histogram"):
-        fig, ax = plt.subplots()
-        ax.hist(img_data.ravel(), bins=256, color='gray')
-        ax.set_title("Histogram of pixel values")
-        st.pyplot(fig)
+
+    if st.sidebar.checkbox("Velocity Analysis"):
+        velocity_analysis(img_data)
+
+    if st.sidebar.checkbox("Histogram Analysis"):
+        histogram_analysis(img_data)
+
+    if st.sidebar.checkbox("Accuracy Display"):
+        accuracy_display(img_data)
+
+    if st.sidebar.checkbox("Electromapping"):
+        electromapping(img_data)
+
+    if st.sidebar.checkbox("Signal Processing"):
+        signal_processing(img_data)
+
+    if st.sidebar.checkbox("Region Selection"):
+        region_selection(img_data)
+
+    if st.sidebar.checkbox("Automatically Segmented Signal"):
+        automatically_segmented_signal(img_data)
+
+    if st.sidebar.checkbox("Activation Map"):
+        activation_map(img_data)
+
+    if st.sidebar.checkbox("Display Analysis Option"):
+        display_analysis_option(img_data)
+
+    if st.sidebar.checkbox("Diastolic Interval"):
+        diastolic_interval(img_data)
+
+    if st.sidebar.checkbox("Repolarisation"):
+        repolarisation(img_data)
+
+    if st.sidebar.checkbox("APD"):
+        APD(img_data)
 
 if __name__ == "__main__":
     main()
