@@ -8,8 +8,8 @@ import tempfile
 import os
 
 @st.cache
-def load_image(url):
-    response = requests.get(url)
+def load_image(url, headers):
+    response = requests.get(url, headers=headers)
     if response.status_code != 200:
         raise Exception(f"Failed to download image from {url}")
     with tempfile.NamedTemporaryFile(suffix=".mat", delete=False) as fp:
@@ -31,9 +31,12 @@ def main():
     
     repo_url = 'https://api.github.com/repos/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/contents/mat_api'
     
-    response = requests.get(repo_url)
+    # Use your GitHub personal access token
+    headers = {'Authorization': 'token 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'}
+    
+    response = requests.get(repo_url, headers=headers)
     if response.status_code != 200:
-        st.error("Failed to fetch data from the GitHub API. Please check the URL or your network connection.")
+        st.error(f"Failed to fetch data from the GitHub API. Status code: {response.status_code}, Response: {response.text}")
         st.stop()
 
     try:
@@ -46,7 +49,6 @@ def main():
         st.error("Unexpected format received from the GitHub API. Expected a list of files.")
         st.stop()
 
-    # Assuming 'files' is now a list of dictionaries, each containing file details
     mat_files = [file for file in files if file['name'].endswith('.mat')]
     if not mat_files:
         st.error("No .mat files found.")
@@ -56,7 +58,7 @@ def main():
     
     raw_url = mat_files[file_index]['download_url'].replace("https://github.com", "https://raw.githubusercontent.com").replace("/blob", "")
     
-    img, img_data = load_image(raw_url)
+    img, img_data = load_image(raw_url, headers)
     
     st.image(img, use_column_width=True)
     
