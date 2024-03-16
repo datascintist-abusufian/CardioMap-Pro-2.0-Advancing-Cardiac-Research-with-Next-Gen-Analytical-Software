@@ -44,15 +44,20 @@ def main():
     # GitHub API URL for the repository containing .mat files
     repo_url = 'https://api.github.com/repos/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/contents/mat_api'
     
-    response = requests.get(repo_url)
+   response = requests.get(repo_url)
+if response.status_code != 200:
+    st.error("Failed to fetch data from the GitHub API. Please check the URL or your network connection.")
+    st.stop()
+
+try:
     files = response.json()
-    
-    # Filter for .mat files
-    mat_files = [file for file in files if file['name'].endswith('.mat')]
-    
-    if not mat_files:
-        st.write("No .mat files found in the repository.")
-        return
+except ValueError:
+    st.error("Invalid response received from the GitHub API.")
+    st.stop()
+
+if not isinstance(files, list):
+    st.error("Unexpected format received from the GitHub API. Expected a list of files.")
+    st.stop()
     
     # Create a slider in the sidebar to select a file
     file_index = st.sidebar.slider("Select an image", 0, len(mat_files) - 1)
