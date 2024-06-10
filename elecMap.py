@@ -33,8 +33,8 @@ def histogram_analysis(data):
     fig, ax = plt.subplots()
 
     # Perform your plotting actions
-    ax.hist(data.ravel(), bins=256, color='orange')
-    ax.hist(data.ravel(), bins=256, color='black')
+    ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
+    ax.hist(data.ravel(), bins=256, color='black', alpha=0.5)
 
     # Pass the figure to st.pyplot()
     st.pyplot(fig)
@@ -71,11 +71,16 @@ def region_selection(data):
     # Dynamic adjustment based on data dimensions
     max_row, max_col = data.shape[0], data.shape[1]
     
+    # Check if max_row and max_col are valid
+    if max_row <= 1 or max_col <= 1:
+        st.write("The data dimensions are too small for region selection.")
+        return
+    
     # Streamlit sliders for dynamic region selection
     start_row = st.sidebar.number_input('Start Row', min_value=0, max_value=max_row-1, value=0)
-    end_row = st.sidebar.number_input('End Row', min_value=0, max_value=max_row, value=max_row)
+    end_row = st.sidebar.number_input('End Row', min_value=start_row+1, max_value=max_row, value=max_row)
     start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-1, value=0)
-    end_col = st.sidebar.number_input('End Column', min_value=0, max_value=max_col, value=max_col)
+    end_col = st.sidebar.number_input('End Column', min_value=start_col+1, max_value=max_col, value=max_col)
     
     # Select and display the region
     region = data[start_row:end_row, start_col:end_col]
