@@ -107,8 +107,13 @@ def activation_map(data):
         st.error("Data should be a 2D or 3D array")
         return
 
-    # Display the activation map as an array
-    st.write(f"Activation Map: {activation_map}")
+    # Check if activation_map has significant values
+    unique_values = np.unique(activation_map)
+    st.write(f"Unique values in the activation map: {unique_values}")
+
+    if len(unique_values) == 1 and unique_values[0] == 0:
+        st.error("Activation map contains only zero values. Adjusting the threshold might help.")
+        return
 
     # Normalize the activation map for better visualization
     activation_map = (activation_map - np.min(activation_map)) / (np.max(activation_map) - np.min(activation_map))
