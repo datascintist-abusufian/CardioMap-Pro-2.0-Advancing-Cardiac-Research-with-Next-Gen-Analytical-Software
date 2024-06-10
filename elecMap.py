@@ -1,3 +1,118 @@
+import streamlit as st
+import requests
+from io import BytesIO
+import scipy.io
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import torch
+from torch.autograd import Variable
+from torchvision import models, transforms
+
+@st.cache(allow_output_mutation=True)
+def load_image(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        content = BytesIO(response.content)
+        mat_data = scipy.io.loadmat(content)
+        img_data = mat_data['image_data']
+        img = Image.fromarray(np.uint8(img_data.squeeze()))
+        return img, img_data
+    else:
+        st.error("Failed to load data from URL.")
+        return None, None
+
+@st.cache(allow_output_mutation=True)
+def download_weights():
+    url = "https://download.pytorch.org/models/resnet18-f37072fd.pth"
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open("resnet18-f37072fd.pth", "wb") as f:
+            f.write(response.content)
+    else:
+        st.error("Failed to download weights.")
+
+def velocity_analysis(data):
+    mean = np.mean(data)
+    std = np.std(data)
+    st.write(f"Mean pixel value: {mean}")
+    st.write(f"Standard deviation of pixel values: {std}")
+
+def histogram_analysis(data):
+    fig, ax = plt.subplots()
+    ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
+    ax.hist(data.ravel(), bins=256, color='black', alpha=0.5)
+    st.pyplot(fig)
+
+def accuracy_display(data):
+    threshold = 128
+    accuracy = np.mean(data > threshold)
+    st.write(f"Proportion of pixels above threshold: {accuracy}")
+
+def electromapping(data):
+    electromap = np.fft.fft2(data)
+    log_electromap = np.log1p(np.abs(electromap))
+    normalized_electromap = (log_electromap - np.min(log_electromap)) / (np.max(log_electromap) - np.min(log_electromap))
+    colored_electromap = cm.hot(normalized_electromap)
+    st.image(colored_electromap, use_column_width=True)
+
+def signal_processing(data):
+    processed_signal = np.fft.ifft2(data)
+    abs_processed_signal = np.abs(processed_signal)
+    log_processed_signal = np.log1p(abs_processed_signal)
+    normalized_signal = (log_processed_signal - np.min(log_processed_signal)) / (np.max(log_processed_signal) - np.min(log_processed_signal))
+    st.image(normalized_signal, use_column_width=True)
+
+def region_selection(data):
+    max_row, max_col = data.shape[0], data.shape[1]
+    
+    if max_row <= 1 or max_col <= 1:
+        st.write("The data dimensions are too small for region selection.")
+        return
+    
+    start_row = st.sidebar.number_input('Start Row', min_value=0, max_value=max_row-2, value=0)
+    end_row = st.sidebar.number_input('End Row', min_value=start_row+1, max_value=max_row, value=max_row)
+    start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-2, value=0)
+    end_col = st.sidebar.number_input('End Column', min_value=start_col+1, max_value=max_col, value=max_col)
+    
+    region = data[start_row:end_row, start_col:end_col]
+    if np.ptp(region) == 0:
+        st.write("The selected region is uniform or empty.")
+    else:
+        normalized_region = (region - np.min(region)) / (np.max(region) - np.min(region))
+        st.image(normalized_region, caption="Selected Region", use_column_width=True)
+
+def automatically_segmented_signal(data):
+    threshold = np.mean(data)
+    segmented_signal = np.where(data > threshold, 1, 0)
+    segmented_signal = segmented_signal * 255
+    st.image(segmented_signal.astype(np.uint8), use_column_width=True)
+
+def activation_map(data):
+    threshold = 0.01 * np.max(data)
+    activation_map = np.argmax(data > threshold, axis=2)
+    st.write(f"Activation Map: {activation_map}")
+
+def display_analysis_option(data):
+    threshold = np.mean(data) + np.std(data)
+    areas_above_threshold = np.sum(data > threshold)
+    st.write(f"Areas above threshold (mean + std): {areas_above_threshold}")
+
+def diastolic_interval(data):
+    variability = np.std(data)
+    st.write(f"Signal variability (potential proxy for diastolic interval variability): {variability}")
+
+def repolarisation(data):
+    high_value_threshold = np.percentile(data, 90)
+    high_value_areas = np.sum(data > high_value_threshold)
+    st.write(f"Areas potentially representing repolarisation (above 90th percentile): {high_value_areas}")
+
+def APD(data):
+    duration_threshold = np.mean(data)
+    potential_apd_areas = np.sum(data > duration_threshold)
+    st.write(f"Areas with potential APD (above mean value): {potential_apd_areas}")
+
 def grad_cam(data):
     download_weights()
     model = models.resnet18()
@@ -52,6 +167,9 @@ def grad_cam(data):
     heatmap = cm.jet(heatmap)[:, :, :3]
     superimposed_img = heatmap * 0.4 + data
     st.image(superimposed_img.astype(np.uint8), caption="Grad-CAM Output", use_column_width=True)
+
+def ground_truth(data):
+    st.image(data, caption="Ground Truth", use_column_width=True)
 
 def main():
     st.title("Image Viewer and Data Analysis")
