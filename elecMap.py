@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data
 def load_image(url):
     """Load .mat data from a given URL."""
     response = requests.get(url)
@@ -77,9 +77,9 @@ def region_selection(data):
         return
     
     # Streamlit sliders for dynamic region selection
-    start_row = st.sidebar.number_input('Start Row', min_value=0, max_value=max_row-1, value=0)
+    start_row = st.sidebar.number_input('Start Row', min_value=0, max_value=max_row-2, value=0)
     end_row = st.sidebar.number_input('End Row', min_value=start_row+1, max_value=max_row, value=max_row)
-    start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-1, value=0)
+    start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-2, value=0)
     end_col = st.sidebar.number_input('End Column', min_value=start_col+1, max_value=max_col, value=max_col)
     
     # Select and display the region
