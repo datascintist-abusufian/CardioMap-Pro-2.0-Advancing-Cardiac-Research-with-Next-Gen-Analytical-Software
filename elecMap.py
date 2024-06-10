@@ -94,24 +94,26 @@ def activation_map(data):
     st.write(f"Data Min: {np.min(data)}, Data Max: {np.max(data)}, Data Mean: {np.mean(data)}, Data Std: {np.std(data)}")
 
     # Define a threshold for segmentation
-    threshold = np.mean(data) + 2 * np.std(data)  # Example threshold
+    threshold = np.mean(data) + np.std(data)  # Example threshold
+    st.write(f"Using threshold: {threshold}")
 
-    # Calculate the activation map along the third axis
+    # Check if the data has at least 3 dimensions
     if data.ndim == 3:
+        # Calculate the activation map along the third axis
         activation_map = np.argmax(data > threshold, axis=2)
     else:
         st.error("Data should be a 3D array")
         return
     
-    # Display the activation map
+    # Display the activation map as an array
     st.write(f"Activation Map: {activation_map}")
 
     # Visualize the activation map
-    plt.figure(figsize=(10, 5))
-    plt.imshow(activation_map, cmap='hot', interpolation='nearest')
-    plt.title('Activation Map')
-    plt.colorbar()
-    st.pyplot(plt)
+    fig, ax = plt.subplots(figsize=(10, 5))
+    cax = ax.imshow(activation_map, cmap='hot', interpolation='nearest')
+    ax.set_title('Activation Map')
+    fig.colorbar(cax, ax=ax)
+    st.pyplot(fig)
 
 def display_analysis_option(data):
     threshold = np.mean(data) + np.std(data)
