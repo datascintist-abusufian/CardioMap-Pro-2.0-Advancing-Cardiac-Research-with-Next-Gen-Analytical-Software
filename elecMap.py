@@ -91,10 +91,13 @@ def automatically_segmented_signal(data):
 def activation_map(data):
     st.write(f"Data Min: {np.min(data)}, Data Max: {np.max(data)}, Data Mean: {np.mean(data)}, Data Std: {np.std(data)}")
 
-    threshold = np.mean(data) + 2 * np.std(data)
+    # Use a dynamic threshold based on the data distribution
+    threshold = np.mean(data) + np.std(data)
     st.write(f"Using threshold: {threshold}")
 
+    # Ensure the data is 2D or 3D
     if data.ndim == 3:
+        # Calculate the activation map along the third axis
         activation_map = np.max(data, axis=2) > threshold
     elif data.ndim == 2:
         activation_map = data > threshold
@@ -102,13 +105,16 @@ def activation_map(data):
         st.error("Data should be a 2D or 3D array")
         return
 
+    # Check if activation_map has significant values
     unique_values = np.unique(activation_map)
     st.write(f"Unique values in the activation map: {unique_values}")
 
-    if len(unique_values) == 1 and unique_values[0] == 0:
+    if len(unique_values) == 1 and unique_values[0] == False:
         st.error("Activation map contains only zero values. Adjusting the threshold might help.")
         return
 
+    # Normalize the activation map for better visualization
+    activation_map = activation_map.astype(np.float32)
     fig, ax = plt.subplots(figsize=(10, 5))
     cax = ax.imshow(activation_map, cmap='hot', interpolation='nearest')
     ax.set_title('Activation Map')
