@@ -12,7 +12,6 @@ from torchvision import models, transforms
 
 @st.cache(allow_output_mutation=True)
 def load_image(url):
-    """Load .mat data from a given URL."""
     response = requests.get(url)
     if response.status_code == 200:
         content = BytesIO(response.content)
@@ -23,6 +22,16 @@ def load_image(url):
     else:
         st.error("Failed to load data from URL.")
         return None, None
+
+@st.cache(allow_output_mutation=True)
+def download_weights():
+    url = "https://download.pytorch.org/models/resnet18-f37072fd.pth"
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open("resnet18-f37072fd.pth", "wb") as f:
+            f.write(response.content)
+    else:
+        st.error("Failed to download weights.")
 
 def velocity_analysis(data):
     mean = np.mean(data)
@@ -105,6 +114,7 @@ def APD(data):
     st.write(f"Areas with potential APD (above mean value): {potential_apd_areas}")
 
 def grad_cam(data):
+    download_weights()
     model = models.resnet18()
     model.load_state_dict(torch.load('resnet18-f37072fd.pth'))
     model.eval()
