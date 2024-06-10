@@ -6,6 +6,9 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import torch
+from torch.autograd import Variable
+from torchvision import models, transforms
 
 @st.cache(allow_output_mutation=True)
 def load_image(url):
@@ -22,127 +25,138 @@ def load_image(url):
         return None, None
 
 def velocity_analysis(data):
-    # Calculate the mean and standard deviation of the pixel values
     mean = np.mean(data)
     std = np.std(data)
     st.write(f"Mean pixel value: {mean}")
     st.write(f"Standard deviation of pixel values: {std}")
 
 def histogram_analysis(data):
-    # Create a new figure and axes
     fig, ax = plt.subplots()
-
-    # Perform your plotting actions
     ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
     ax.hist(data.ravel(), bins=256, color='black', alpha=0.5)
-
-    # Pass the figure to st.pyplot()
     st.pyplot(fig)
-    
+
 def accuracy_display(data):
-    # Calculate the proportion of pixels that are above a certain threshold
-    threshold = 128  # replace with your actual threshold
+    threshold = 128
     accuracy = np.mean(data > threshold)
     st.write(f"Proportion of pixels above threshold: {accuracy}")
-    
+
 def electromapping(data):
-    # Apply a Fourier transform to the data
     electromap = np.fft.fft2(data)
-    # Take the logarithm of the absolute value of the Fourier transform
     log_electromap = np.log1p(np.abs(electromap))
-    # Normalize the data to the range [0.0, 1.0]
     normalized_electromap = (log_electromap - np.min(log_electromap)) / (np.max(log_electromap) - np.min(log_electromap))
-    # Apply a colormap to the data
     colored_electromap = cm.hot(normalized_electromap)
     st.image(colored_electromap, use_column_width=True)
 
 def signal_processing(data):
-    # Apply an inverse Fourier transform to the data
     processed_signal = np.fft.ifft2(data)
-    # Take the absolute value of the processed signal
     abs_processed_signal = np.abs(processed_signal)
-    # Apply a logarithmic function to the data
     log_processed_signal = np.log1p(abs_processed_signal)
-    # Normalize the data to the range [0.0, 1.0]
     normalized_signal = (log_processed_signal - np.min(log_processed_signal)) / (np.max(log_processed_signal) - np.min(log_processed_signal))
     st.image(normalized_signal, use_column_width=True)
 
 def region_selection(data):
-    # Dynamic adjustment based on data dimensions
     max_row, max_col = data.shape[0], data.shape[1]
     
-    # Check if max_row and max_col are valid
     if max_row <= 1 or max_col <= 1:
         st.write("The data dimensions are too small for region selection.")
         return
     
-    # Streamlit sliders for dynamic region selection
     start_row = st.sidebar.number_input('Start Row', min_value=0, max_value=max_row-2, value=0)
     end_row = st.sidebar.number_input('End Row', min_value=start_row+1, max_value=max_row, value=max_row)
     start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-2, value=0)
     end_col = st.sidebar.number_input('End Column', min_value=start_col+1, max_value=max_col, value=max_col)
     
-    # Select and display the region
     region = data[start_row:end_row, start_col:end_col]
-    if np.ptp(region) == 0:  # Checking if the selected region is uniform
+    if np.ptp(region) == 0:
         st.write("The selected region is uniform or empty.")
     else:
         normalized_region = (region - np.min(region)) / (np.max(region) - np.min(region))
         st.image(normalized_region, caption="Selected Region", use_column_width=True)
 
 def automatically_segmented_signal(data):
-    # Define a threshold for segmentation
-    threshold = np.mean(data)  # replace with your actual threshold
-
-    # Apply the threshold to the data
+    threshold = np.mean(data)
     segmented_signal = np.where(data > threshold, 1, 0)
-
-    # Scale the segmented signal to the range [0, 255]
     segmented_signal = segmented_signal * 255
-
-    # Display the segmented signal
     st.image(segmented_signal.astype(np.uint8), use_column_width=True)
 
 def activation_map(data):
-    # Define a threshold for activation
     threshold = 0.01 * np.max(data)
-
-    # Calculate the activation map
     activation_map = np.argmax(data > threshold, axis=2)
-
     st.write(f"Activation Map: {activation_map}")
 
 def display_analysis_option(data):
-    # Placeholder for a more complex analysis, e.g., finding areas with specific properties
-    threshold = np.mean(data) + np.std(data)  # Example threshold
+    threshold = np.mean(data) + np.std(data)
     areas_above_threshold = np.sum(data > threshold)
     st.write(f"Areas above threshold (mean + std): {areas_above_threshold}")
 
 def diastolic_interval(data):
-    # Example calculation: Variability of the signal (assuming variability might relate to diastolic intervals)
     variability = np.std(data)
     st.write(f"Signal variability (potential proxy for diastolic interval variability): {variability}")
 
 def repolarisation(data):
-    # Placeholder: Assuming higher values might indicate repolarization regions
-    high_value_threshold = np.percentile(data, 90)  # 90th percentile as a high-value threshold
+    high_value_threshold = np.percentile(data, 90)
     high_value_areas = np.sum(data > high_value_threshold)
     st.write(f"Areas potentially representing repolarisation (above 90th percentile): {high_value_areas}")
 
 def APD(data):
-    # Example assuming APD relates to the duration of certain signal levels
-    # This is highly simplified and not directly applicable without knowing data structure
-    duration_threshold = np.mean(data)  # Simplified threshold
+    duration_threshold = np.mean(data)
     potential_apd_areas = np.sum(data > duration_threshold)
     st.write(f"Areas with potential APD (above mean value): {potential_apd_areas}")
+
+def grad_cam(data):
+    model = models.resnet18(pretrained=True)
+    model.eval()
+
+    preprocess = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
+    input_tensor = preprocess(data).unsqueeze(0)
+    input_tensor = Variable(input_tensor, requires_grad=True)
+
+    def extract_layer(layer, input, output):
+        return output
+    
+    handle = model.layer4[1].register_forward_hook(extract_layer)
+    output = model(input_tensor)
+    handle.remove()
+
+    output_idx = output.argmax().item()
+    output_max = output[0, output_idx]
+    model.zero_grad()
+    output_max.backward()
+
+    gradients = input_tensor.grad[0]
+    pooled_gradients = torch.mean(gradients, dim=[1, 2])
+
+    activations = model.layer4[1].output[0]
+    for i in range(512):
+        activations[i, ...] *= pooled_gradients[i]
+
+    heatmap = torch.mean(activations, dim=0).detach().numpy()
+    heatmap = np.maximum(heatmap, 0)
+    heatmap /= np.max(heatmap)
+    heatmap = np.uint8(255 * heatmap)
+    heatmap = Image.fromarray(heatmap)
+    heatmap = heatmap.resize((data.shape[1], data.shape[0]))
+    heatmap = np.array(heatmap)
+
+    heatmap = cm.jet(heatmap)[:, :, :3]
+    superimposed_img = heatmap * 0.4 + data
+    st.image(superimposed_img.astype(np.uint8), caption="Grad-CAM Output", use_column_width=True)
+
+def ground_truth(data):
+    st.image(data, caption="Ground Truth", use_column_width=True)
 
 def main():
     st.title("Image Viewer and Data Analysis")
 
-    # List of URLs to the .mat files in the GitHub repository
     mat_files = [
         "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_1.mat",
-        # Add more URLs as needed
     ]
 
     file_index = st.sidebar.slider("Select an image", 0, len(mat_files) - 1)
@@ -185,6 +199,12 @@ def main():
 
         if st.sidebar.checkbox("APD"):
             APD(img_data)
+            
+        if st.sidebar.checkbox("Grad-CAM"):
+            grad_cam(img_data)
+            
+        if st.sidebar.checkbox("Ground Truth"):
+            ground_truth(img_data)
 
 if __name__ == "__main__":
     main()
