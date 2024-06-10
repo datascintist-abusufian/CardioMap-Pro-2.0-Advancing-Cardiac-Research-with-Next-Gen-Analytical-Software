@@ -105,7 +105,8 @@ def APD(data):
     st.write(f"Areas with potential APD (above mean value): {potential_apd_areas}")
 
 def grad_cam(data):
-    model = models.resnet18(pretrained=True)
+    model = models.resnet18()
+    model.load_state_dict(torch.load('resnet18-f37072fd.pth'))
     model.eval()
 
     preprocess = transforms.Compose([
@@ -155,7 +156,6 @@ def ground_truth(data):
 def main():
     st.title("Image Viewer and Data Analysis")
 
-    # List all available .mat files in the repository
     mat_files = [
         "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_1.mat",
         "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_11.mat",
