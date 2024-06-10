@@ -42,7 +42,6 @@ def velocity_analysis(data):
 def histogram_analysis(data):
     fig, ax = plt.subplots()
     ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
-    ax.hist(data.ravel(), bins=256, color='black', alpha=0.5)
     st.pyplot(fig)
 
 def accuracy_display(data):
@@ -90,30 +89,19 @@ def automatically_segmented_signal(data):
     st.image(segmented_signal.astype(np.uint8), use_column_width=True)
 
 def activation_map(data):
-    # Print data statistics
     st.write(f"Data Min: {np.min(data)}, Data Max: {np.max(data)}, Data Mean: {np.mean(data)}, Data Std: {np.std(data)}")
 
-    # Plot the histogram of the data
-    fig, ax = plt.subplots()
-    ax.hist(data.ravel(), bins=256, color='blue', alpha=0.5)
-    ax.set_title('Data Histogram')
-    st.pyplot(fig)
-
-    # Define a dynamic threshold for segmentation
-    threshold = np.percentile(data, 99)  # Use the 99th percentile as a threshold
+    threshold = np.mean(data) + 2 * np.std(data)
     st.write(f"Using threshold: {threshold}")
 
-    # Ensure the data is 2D or 3D
     if data.ndim == 3:
-        # Calculate the activation map along the third axis
-        activation_map = np.argmax(data > threshold, axis=2)
+        activation_map = np.max(data, axis=2) > threshold
     elif data.ndim == 2:
         activation_map = data > threshold
     else:
         st.error("Data should be a 2D or 3D array")
         return
 
-    # Check if activation_map has significant values
     unique_values = np.unique(activation_map)
     st.write(f"Unique values in the activation map: {unique_values}")
 
@@ -121,10 +109,6 @@ def activation_map(data):
         st.error("Activation map contains only zero values. Adjusting the threshold might help.")
         return
 
-    # Normalize the activation map for better visualization
-    activation_map = (activation_map - np.min(activation_map)) / (np.max(activation_map) - np.min(activation_map))
-
-    # Visualize the activation map
     fig, ax = plt.subplots(figsize=(10, 5))
     cax = ax.imshow(activation_map, cmap='hot', interpolation='nearest')
     ax.set_title('Activation Map')
@@ -156,12 +140,11 @@ def grad_cam(data):
     model.load_state_dict(torch.load('resnet18-f37072fd.pth'))
     model.eval()
 
-    # Ensure data is a 2D numpy array and convert to a 3-channel (RGB) image
     if len(data.shape) == 2:
         data = np.stack([data]*3, axis=-1)
     elif data.shape[2] == 1:
         data = np.concatenate([data]*3, axis=-1)
-    elif data.shape[2] == 4:  # In case there's an alpha channel
+    elif data.shape[2] == 4:
         data = data[:, :, :3]
 
     preprocess = transforms.Compose([
