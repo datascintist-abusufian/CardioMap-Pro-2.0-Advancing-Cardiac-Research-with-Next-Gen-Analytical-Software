@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-@st.cache_data
+@st.cache(allow_output_mutation=True)
 def load_image(url):
     """Load .mat data from a given URL."""
     response = requests.get(url)
