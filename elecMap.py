@@ -93,8 +93,14 @@ def activation_map(data):
     # Print data statistics
     st.write(f"Data Min: {np.min(data)}, Data Max: {np.max(data)}, Data Mean: {np.mean(data)}, Data Std: {np.std(data)}")
 
+    # Plot the histogram of the data
+    fig, ax = plt.subplots()
+    ax.hist(data.ravel(), bins=256, color='blue', alpha=0.5)
+    ax.set_title('Data Histogram')
+    st.pyplot(fig)
+
     # Define a dynamic threshold for segmentation
-    threshold = np.mean(data) + np.std(data) / 2  # Adjusted threshold
+    threshold = np.percentile(data, 99)  # Use the 99th percentile as a threshold
     st.write(f"Using threshold: {threshold}")
 
     # Ensure the data is 2D or 3D
