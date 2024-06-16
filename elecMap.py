@@ -42,10 +42,11 @@ def histogram_analysis(data):
     ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
     st.pyplot(fig)
 
-def accuracy_display(data):
+def accuracy_display(data, ground_truth):
     threshold = 128
-    accuracy = np.mean(data > threshold)
-    st.write(f"Proportion of pixels above threshold: {accuracy}")
+    prediction = data > threshold
+    accuracy = np.mean(prediction == ground_truth)
+    st.write(f"Segmentation Accuracy: {accuracy}")
 
 def electromapping(data):
     electromap = np.fft.fft2(data)
