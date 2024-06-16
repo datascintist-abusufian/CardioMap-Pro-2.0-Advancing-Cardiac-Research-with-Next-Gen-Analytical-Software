@@ -205,12 +205,7 @@ def main():
     st.title("Image Viewer and Data Analysis")
 
     image_files = [
-        "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
-       Here's the continuation and completion of the code:
-
-```python
-        # Add more JPG image URLs as needed
-    ]
+        "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",]
 
     file_index = st.sidebar.selectbox("Select an image", range(len(image_files)), format_func=lambda x: image_files[x].split('/')[-1])
     img, img_data = load_image(image_files[file_index])
