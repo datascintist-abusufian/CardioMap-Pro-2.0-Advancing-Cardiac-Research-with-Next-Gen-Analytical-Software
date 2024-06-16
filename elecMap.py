@@ -181,9 +181,11 @@ def grad_cam(data):
     input_tensor = preprocess(data).unsqueeze(0)
     input_tensor = Variable(input_tensor, requires_grad=True)
 
+    activations = []
+
     def extract_layer(layer, input, output):
-        return output
-    
+        activations.append(output)
+
     handle = model.layer4[1].register_forward_hook(extract_layer)
     output = model(input_tensor)
     handle.remove()
@@ -196,8 +198,8 @@ def grad_cam(data):
     gradients = input_tensor.grad[0]
     pooled_gradients = torch.mean(gradients, dim=[1, 2])
 
-    activations = model.layer4[1].output[0]
-    for i in range(512):
+    activations = activations[0][0]
+    for i in range(activations.shape[0]):
         activations[i, ...] *= pooled_gradients[i]
 
     heatmap = torch.mean(activations, dim=0).detach().numpy()
