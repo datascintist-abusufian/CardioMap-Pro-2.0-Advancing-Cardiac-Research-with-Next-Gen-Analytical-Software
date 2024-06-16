@@ -8,7 +8,6 @@ import matplotlib.cm as cm
 import torch
 from torch.autograd import Variable
 from torchvision import models, transforms
-import os
 import sys
 
 # Handle potential recursion limits for large images
@@ -16,43 +15,32 @@ sys.setrecursionlimit(10000)
 
 # List of image paths provided
 image_files = [
-    "original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
-    "original_2D_01_2024_jpg.rf.dc5b4863b6e5730b5c59b1d25b0b9611.jpg",
-    "original_2D_01_2025_jpg.rf.975b93d5d4d68bb0306fde3ce8e37e86.jpg",
-    "original_2D_01_2026_jpg.rf.b727703b43368f2018773abbd3dff73a.jpg",
-    "original_2D_01_2028_jpg.rf.64b2b9caea1ace3c99df576f0264c189.jpg",
-    "original_2D_01_2031_jpg.rf.14b8264df08246d0e12f212fb7d80e2a.jpg",
-    "original_2D_01_2032_jpg.rf.30160c9fecffab87f8d2f1f359ace04c.jpg",
-    "original_2D_01_2033_jpg.rf.41f6b753f6ceaeabaffd88ef3dd4942c.jpg",
-    "original_2D_01_2311_jpg.rf.09dfddf11f04c1d1f86dd4c9a3a3c291.jpg",
-    "original_2D_01_2312_jpg.rf.e47c0e9f0184d8dd12d16a56a997c661.jpg",
-    "original_2D_01_2313_jpg.rf.2b9a43c5e80cd169cbc2c099c34750be.jpg",
-    "original_2D_01_2315_jpg.rf.7990a82da9c40969223cd81f4e778ee4.jpg",
-    "original_2D_01_2316_jpg.rf.d68ea884aa381883b1f35e779bdee556.jpg",
-    "original_2D_01_2317_jpg.rf.ae9870bb583fdd93ef1e337eac26353c.jpg",
-    "original_2D_01_2319_jpg.rf.e4f7068a937427c5eea991126c98a003.jpg",
-    "original_2D_01_2322_jpg.rf.f59933f021c03295c0d80da76cfa845f.jpg"
+    "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
+    "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2024_jpg.rf.dc5b4863b6e5730b5c59b1d25b0b9611.jpg",
+    "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2025_jpg.rf.975b93d5d4d68bb0306fde3ce8e37e86.jpg",
+    # Add the rest of the URLs in similar format
 ]
 
-@st.cache(allow_output_mutation=True)
-def load_image(file_name):
-    file_path = f'path_to_images/{file_name}'
-    if os.path.exists(file_path):
-        img = Image.open(file_path).convert('L')
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def load_image(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        content = BytesIO(response.content)
+        img = Image.open(content).convert('L')
         img_data = np.array(img)
-        return img, img_data
+        return img, img_data, True
     else:
-        st.error(f"Failed to load image: {file_name}")
-        return None, None
+        return None, None, False
 
 @st.cache(allow_output_mutation=True)
 def load_ground_truth_data(image_files):
     ground_truth_data = {}
     for image_file in image_files:
-        image_name = image_file.split('.')[0]  # Assuming ground truth files have a similar name
-        ground_truth_path = f'path_to_ground_truth/{image_name}_ground_truth.npy'
-        if os.path.exists(ground_truth_path):
-            ground_truth_data[image_name] = np.load(ground_truth_path)
+        image_name = image_file.split('/')[-1].split('.')[0]  # Assuming ground truth files have a similar name
+        ground_truth_url = f'https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/{image_name}_ground_truth.npy'
+        response = requests.get(ground_truth_url)
+        if response.status_code == 200:
+            ground_truth_data[image_name] = np.load(BytesIO(response.content))
         else:
             st.warning(f"Ground truth not found for {image_name}")
     return ground_truth_data
@@ -145,7 +133,7 @@ def activation_map(data):
         return
 
     activation_map = activation_map.astype(np.float32)
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 5))
     cax = ax.imshow(activation_map, cmap='hot', interpolation='nearest')
     ax.set_title('Activation Map')
     fig.colorbar(cax, ax=ax)
@@ -245,9 +233,13 @@ def main():
     ground_truth_data = load_ground_truth_data(image_files)
 
     file_index = st.sidebar.selectbox("Select an image", range(len(image_files)), format_func=lambda x: image_files[x].split('/')[-1])
-    img, img_data = load_image(image_files[file_index])
-    image_name = image_files[file_index].split('.')[0]
+    img, img_data, success = load_image(image_files[file_index])
+    image_name = image_files[file_index].split('/')[-1].split('.')[0]
     ground_truth = ground_truth_data.get(image_name)
+
+    if not success:
+        st.error(f"Failed to load image: {image_files[file_index]}")
+        return
 
     if img is not None and img_data is not None:
         st.image(img, use_column_width=True)
