@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 from io import BytesIO
-import scipy.io
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,9 +14,8 @@ def load_image(url):
     response = requests.get(url)
     if response.status_code == 200:
         content = BytesIO(response.content)
-        mat_data = scipy.io.loadmat(content)
-        img_data = mat_data['image_data']
-        img = Image.fromarray(np.uint8(img_data.squeeze()))
+        img = Image.open(content).convert('L')
+        img_data = np.array(img)
         return img, img_data
     else:
         st.error("Failed to load data from URL.")
@@ -75,7 +73,7 @@ def region_selection(data):
     start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-2, value=0)
     end_col = st.sidebar.number_input('End Column', min_value=start_col+1, max_value=max_col, value=max_col)
     
-    region = data[start_row:end_row, start_col:end_col]
+    region = data[start_row:end_row, start_col:end_col)
     if np.ptp(region) == 0:
         st.write("The selected region is uniform or empty.")
     else:
@@ -91,13 +89,10 @@ def automatically_segmented_signal(data):
 def activation_map(data):
     st.write(f"Data Min: {np.min(data)}, Data Max: {np.max(data)}, Data Mean: {np.mean(data)}, Data Std: {np.std(data)}")
 
-    # Use a dynamic threshold based on the data distribution
     threshold = np.mean(data) + np.std(data)
     st.write(f"Using threshold: {threshold}")
 
-    # Ensure the data is 2D or 3D
     if data.ndim == 3:
-        # Calculate the activation map along the third axis
         activation_map = np.max(data, axis=2) > threshold
     elif data.ndim == 2:
         activation_map = data > threshold
@@ -105,7 +100,6 @@ def activation_map(data):
         st.error("Data should be a 2D or 3D array")
         return
 
-    # Check if activation_map has significant values
     unique_values = np.unique(activation_map)
     st.write(f"Unique values in the activation map: {unique_values}")
 
@@ -113,7 +107,6 @@ def activation_map(data):
         st.error("Activation map contains only zero values. Adjusting the threshold might help.")
         return
 
-    # Normalize the activation map for better visualization
     activation_map = activation_map.astype(np.float32)
     fig, ax = plt.subplots(figsize=(10, 5))
     cax = ax.imshow(activation_map, cmap='hot', interpolation='nearest')
@@ -197,63 +190,29 @@ def grad_cam(data):
 def ground_truth(data):
     st.image(data, caption="Ground Truth", use_column_width=True)
 
+def log_likelihood_density(data):
+    density, bins, _ = plt.hist(data.ravel(), bins=256, density=True)
+    log_likelihood = np.log(density + 1e-9)  # Adding a small constant to avoid log(0)
+    fig, ax = plt.subplots()
+    ax.plot(bins[:-1], log_likelihood, label='Log Likelihood')
+    ax.set_xlabel('Pixel Intensity')
+    ax.set_ylabel('Log Likelihood')
+    ax.set_title('Log Likelihood vs Density')
+    ax.legend()
+    st.pyplot(fig)
+
 def main():
     st.title("Image Viewer and Data Analysis")
 
-    mat_files = [
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_1.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_11.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_2.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_22.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_3.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_33.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/Figure_4.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_2-wk_04-450_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_2-wk_05-400_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_2-wk_05-400_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_2-wk_06-350_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_2-wk_06-350_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_6-wk_01-350_Ca_transient.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_6-wk_02-400_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_6-wk_02-400_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Activation_6-wk_03-350_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Coupling_2-wk old_05-400.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_2-wk_04-450_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_2-wk_04-450_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_2-wk_05-400_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_2-wk_05-400_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_2-wk_06-350_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_2-wk_06-350_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_6-week old_02-400_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_6-wk_01-350_Ca_transient.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_Duration_6-wk_03-350_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_SNR_02-400_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_SNR_2-wk_04-450_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_SNR_2-wk_05-400_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_SNR_2-wk_05-400_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_SNR_2-wk_06-350_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_SNR_2-wk_06-350_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_SNR_6-wk_01-350_Ca_transient.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapPig_SNR_6-wk_03-350_Ca.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapRat_Activation_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapRat_Duration_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/MapRat_SNR_Vm.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/anys_activation.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/anys_duration80.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/anys_duration90.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/integration_MapActivation.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/integration_MapActivation_New.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/integration_MapDuration.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/integration_MapSNR_NEW.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/integration_MapSNR_PigSpot.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/integration_MapSNR_PigWhole.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/integration_MapSNR_Rat.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/prep_mask.mat",
-        "https://raw.githubusercontent.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/main/mat_api/proc_snr.mat"
+    image_files = [
+        "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
+        # Add more JPG image URLs as needed
+                "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
+        # Add more JPG image URLs as needed
     ]
 
-    file_index = st.sidebar.selectbox("Select an image", range(len(mat_files)), format_func=lambda x: mat_files[x].split('/')[-1])
-    img, img_data = load_image(mat_files[file_index])
+    file_index = st.sidebar.selectbox("Select an image", range(len(image_files)), format_func=lambda x: image_files[x].split('/')[-1])
+    img, img_data = load_image(image_files[file_index])
     if img is not None and img_data is not None:
         st.image(img, use_column_width=True)
 
@@ -298,6 +257,9 @@ def main():
             
         if st.sidebar.checkbox("Ground Truth"):
             ground_truth(img_data)
+            
+        if st.sidebar.checkbox("Log Likelihood vs Density"):
+            log_likelihood_density(img_data)
 
 if __name__ == "__main__":
     main()
