@@ -146,17 +146,27 @@ def velocity_analysis(data):
     std = np.std(data)
     st.write(f"Mean pixel value: {mean}")
     st.write(f"Standard deviation of pixel values: {std}")
-    
+
 def histogram_analysis(data):
-    fig, ax = plt.subplots(figsize=(3, 2))  # Set figure size to 5x5 inches
+    fig, ax = plt.subplots(figsize=(3, 2))  # Set figure size to 3x2 inches
     ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
     st.pyplot(fig)
-    
+
 def accuracy_display(data, ground_truth):
     threshold = 128
     prediction = data > threshold
     accuracy = np.mean(prediction == ground_truth)
     st.write(f"Segmentation Accuracy: {accuracy}")
+
+    # Highlight the diseased areas on the original image
+    highlighted_image = np.copy(data)
+    highlighted_image[prediction == 1] = 255  # Mark the segmented areas with white color
+    
+    # Create an RGB image for visualization
+    rgb_image = np.stack([data]*3, axis=-1)
+    rgb_image[..., 0] = highlighted_image  # Overlay the highlighted areas on the red channel
+    
+    st.image(rgb_image, caption="Disease Area Highlighted", use_column_width=False, width=300)
 
 def electromapping(data):
     electromap = np.fft.fft2(data)
@@ -312,7 +322,7 @@ def ground_truth_display(data):
 def log_likelihood_density(data):
     density, bins, _ = plt.hist(data.ravel(), bins=256, density=True)
     log_likelihood = np.log(density + 1e-9)  # Adding a small constant to avoid log(0)
-    fig, ax = plt.subplots(figsize=(3, 2))  # Set figure size to 5x5 inches
+    fig, ax = plt.subplots(figsize=(3, 2))  # Set figure size to 3x2 inches
     ax.plot(bins[:-1], log_likelihood, label='Log Likelihood')
     ax.set_xlabel('Pixel Intensity')
     ax.set_ylabel('Log Likelihood')
