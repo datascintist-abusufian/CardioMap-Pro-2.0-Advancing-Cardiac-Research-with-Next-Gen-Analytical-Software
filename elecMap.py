@@ -219,7 +219,7 @@ def activation_map(data):
         return
 
     activation_map = activation_map.astype(np.float32)
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(10, 6))
     cax = ax.imshow(activation_map, cmap='hot', interpolation='nearest')
     ax.set_title('Activation Map')
     fig.colorbar(cax, ax=ax)
