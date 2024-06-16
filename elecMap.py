@@ -146,12 +146,12 @@ def velocity_analysis(data):
     std = np.std(data)
     st.write(f"Mean pixel value: {mean}")
     st.write(f"Standard deviation of pixel values: {std}")
-
+    
 def histogram_analysis(data):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
     ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
     st.pyplot(fig)
-
+    
 def accuracy_display(data, ground_truth):
     threshold = 128
     prediction = data > threshold
@@ -163,14 +163,20 @@ def electromapping(data):
     log_electromap = np.log1p(np.abs(electromap))
     normalized_electromap = (log_electromap - np.min(log_electromap)) / (np.max(log_electromap) - np.min(log_electromap))
     colored_electromap = cm.hot(normalized_electromap)
-    st.image(colored_electromap, caption="Electromapping", use_column_width=True)
+    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
+    ax.imshow(colored_electromap)
+    ax.set_title('Electromapping')
+    st.pyplot(fig)
 
 def signal_processing(data):
     processed_signal = np.fft.ifft2(data)
     abs_processed_signal = np.abs(processed_signal)
     log_processed_signal = np.log1p(abs_processed_signal)
     normalized_signal = (log_processed_signal - np.min(log_processed_signal)) / (np.max(log_processed_signal) - np.min(log_processed_signal))
-    st.image(normalized_signal, caption="Signal Processing", use_column_width=True)
+    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
+    ax.imshow(normalized_signal, cmap='gray')
+    ax.set_title('Signal Processing')
+    st.pyplot(fig)
 
 def region_selection(data):
     max_row, max_col = data.shape[0], data.shape[1]
@@ -219,7 +225,7 @@ def activation_map(data):
         return
 
     activation_map = activation_map.astype(np.float32)
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
     cax = ax.imshow(activation_map, cmap='hot', interpolation='nearest')
     ax.set_title('Activation Map')
     fig.colorbar(cax, ax=ax)
@@ -306,7 +312,7 @@ def ground_truth_display(data):
 def log_likelihood_density(data):
     density, bins, _ = plt.hist(data.ravel(), bins=256, density=True)
     log_likelihood = np.log(density + 1e-9)  # Adding a small constant to avoid log(0)
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
     ax.plot(bins[:-1], log_likelihood, label='Log Likelihood')
     ax.set_xlabel('Pixel Intensity')
     ax.set_ylabel('Log Likelihood')
