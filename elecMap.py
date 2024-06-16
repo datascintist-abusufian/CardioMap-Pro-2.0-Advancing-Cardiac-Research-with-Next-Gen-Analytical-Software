@@ -23,8 +23,7 @@ def get_image_urls(github_url):
         image_urls = [file['download_url'] for file in files if file['name'].endswith('.jpg')]
         return image_urls
     else:
-        st.error("Failed to fetch image URLs from GitHub.")
-        return []
+        return None
 
 @st.cache(allow_output_mutation=True)
 def load_image(url):
@@ -35,7 +34,6 @@ def load_image(url):
         img_data = np.array(img)
         return img, img_data
     else:
-        st.error("Failed to load data from URL.")
         return None, None
 
 @st.cache(allow_output_mutation=True)
@@ -236,7 +234,11 @@ def main():
 
     github_url = "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/tree/main/Train-"
     image_files = get_image_urls(github_url)
-    
+
+    if image_files is None:
+        st.error("Failed to fetch image URLs from GitHub.")
+        return
+
     # Load ground truth data
     ground_truth_data = load_ground_truth_data(image_files)
 
