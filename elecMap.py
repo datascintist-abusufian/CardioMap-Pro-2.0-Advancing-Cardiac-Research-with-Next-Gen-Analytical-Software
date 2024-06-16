@@ -77,14 +77,14 @@ def electromapping(data):
     log_electromap = np.log1p(np.abs(electromap))
     normalized_electromap = (log_electromap - np.min(log_electromap)) / (np.max(log_electromap) - np.min(log_electromap))
     colored_electromap = cm.hot(normalized_electromap)
-    st.image(colored_electromap, use_column_width=True)
+    st.image(colored_electromap, caption="Electromapping", use_column_width=True)
 
 def signal_processing(data):
     processed_signal = np.fft.ifft2(data)
     abs_processed_signal = np.abs(processed_signal)
     log_processed_signal = np.log1p(abs_processed_signal)
     normalized_signal = (log_processed_signal - np.min(log_processed_signal)) / (np.max(log_processed_signal) - np.min(log_processed_signal))
-    st.image(normalized_signal, use_column_width=True)
+    st.image(normalized_signal, caption="Signal Processing", use_column_width=True)
 
 def region_selection(data):
     max_row, max_col = data.shape[0], data.shape[1]
