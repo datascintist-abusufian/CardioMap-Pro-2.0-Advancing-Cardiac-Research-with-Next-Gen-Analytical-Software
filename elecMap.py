@@ -73,7 +73,7 @@ def region_selection(data):
     start_col = st.sidebar.number_input('Start Column', min_value=0, max_value=max_col-2, value=0)
     end_col = st.sidebar.number_input('End Column', min_value=start_col+1, max_value=max_col, value=max_col)
     
-    region = data[start_row:end_row, start_col:end_col)
+    region = data[start_row:end_row, start_col:end_col]
     if np.ptp(region) == 0:
         st.write("The selected region is uniform or empty.")
     else:
@@ -206,8 +206,9 @@ def main():
 
     image_files = [
         "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
-        # Add more JPG image URLs as needed
-                "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
+       Here's the continuation and completion of the code:
+
+```python
         # Add more JPG image URLs as needed
     ]
 
