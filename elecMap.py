@@ -8,6 +8,11 @@ import matplotlib.cm as cm
 import torch
 from torch.autograd import Variable
 from torchvision import models, transforms
+import os
+import sys
+
+# Handle potential recursion limits for large images
+sys.setrecursionlimit(10000)
 
 @st.cache(allow_output_mutation=True)
 def get_image_urls(github_url):
@@ -32,6 +37,18 @@ def load_image(url):
     else:
         st.error("Failed to load data from URL.")
         return None, None
+
+@st.cache(allow_output_mutation=True)
+def load_ground_truth_data(image_files):
+    ground_truth_data = {}
+    for image_file in image_files:
+        image_name = image_file.split('/')[-1].replace('.jpg', '')
+        ground_truth_path = f'path_to_ground_truth/{image_name}_ground_truth.npy'
+        if os.path.exists(ground_truth_path):
+            ground_truth_data[image_name] = np.load(ground_truth_path)
+        else:
+            st.warning(f"Ground truth not found for {image_name}")
+    return ground_truth_data
 
 @st.cache(allow_output_mutation=True)
 def download_weights():
@@ -200,7 +217,7 @@ def grad_cam(data):
     superimposed_img = heatmap * 0.4 + data
     st.image(superimposed_img.astype(np.uint8), caption="Grad-CAM Output", use_column_width=True)
 
-def ground_truth(data):
+def ground_truth_display(data):
     st.image(data, caption="Ground Truth", use_column_width=True)
 
 def log_likelihood_density(data):
@@ -209,25 +226,6 @@ def log_likelihood_density(data):
     fig, ax = plt.subplots()
     ax.plot(bins[:-1], log_likelihood, label='Log Likelihood')
     ax.set_xlabel('Pixel Intensity')
-   Here is the completed code that fetches all JPG image URLs from the specified GitHub directory, loads the images, and calculates segmentation accuracy using the ground truth:
-
-```python
-import streamlit as st
-import requests
-from io import BytesIO
-from PIL import Image
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import torch
-from torch.autograd import Variable
-from torchvision import models, transforms
-
-@st.cache(allow_output_mutation=True)
-def get_image_urls(github_url):
-    api_url = github_url.replace("github.com", "api.github.com/repos").replace("tree/", "") + "/contents"
-    response = requests.get(api_url)
-    if response.status_code == 200:
     ax.set_ylabel('Log Likelihood')
     ax.set_title('Log Likelihood vs Density')
     ax.legend()
@@ -238,16 +236,14 @@ def main():
 
     github_url = "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/tree/main/Train-"
     image_files = get_image_urls(github_url)
-
-    # Assume ground_truth_data contains the ground truth segmentation maps corresponding to the images
-    ground_truth_data = {
-        # Add paths or logic to load the ground truth data for each image
-        # For example: 'image_file_name': np.load('path_to_ground_truth.npy')
-    }
+    
+    # Load ground truth data
+    ground_truth_data = load_ground_truth_data(image_files)
 
     file_index = st.sidebar.selectbox("Select an image", range(len(image_files)), format_func=lambda x: image_files[x].split('/')[-1])
     img, img_data = load_image(image_files[file_index])
-    ground_truth = ground_truth_data.get(image_files[file_index].split('/')[-1])
+    image_name = image_files[file_index].split('/')[-1].replace('.jpg', '')
+    ground_truth = ground_truth_data.get(image_name)
 
     if img is not None and img_data is not None:
         st.image(img, use_column_width=True)
@@ -291,8 +287,8 @@ def main():
         if st.sidebar.checkbox("Grad-CAM"):
             grad_cam(img_data)
             
-        if st.sidebar.checkbox("Ground Truth"):
-            ground_truth(img_data)
+        if ground_truth is not None and st.sidebar.checkbox("Ground Truth"):
+            ground_truth_display(ground_truth)
             
         if st.sidebar.checkbox("Log Likelihood vs Density"):
             log_likelihood_density(img_data)
