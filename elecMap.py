@@ -370,6 +370,15 @@ def main():
     if img is not None and img_data is not None:
         st.image(img, use_column_width=False, width=300)  # Adjust width to 300 pixels
 
+        if ground_truth is not None and st.sidebar.checkbox("Accuracy Display"):
+            accuracy_display(img_data, ground_truth)
+
+        if st.sidebar.checkbox("Grad-CAM"):
+            grad_cam(img_data)
+
+    if img is not None and img_data is not None:
+        st.image(img, use_column_width=False, width=300)  # Adjust width to 300 pixels
+
         if st.sidebar.checkbox("Velocity Analysis"):
             velocity_analysis(img_data)
 
