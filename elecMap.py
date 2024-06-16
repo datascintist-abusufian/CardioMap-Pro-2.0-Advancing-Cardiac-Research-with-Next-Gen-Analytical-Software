@@ -148,7 +148,7 @@ def velocity_analysis(data):
     st.write(f"Standard deviation of pixel values: {std}")
     
 def histogram_analysis(data):
-    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
+    fig, ax = plt.subplots(figsize=(5, 3))  # Set figure size to 5x5 inches
     ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
     st.pyplot(fig)
     
