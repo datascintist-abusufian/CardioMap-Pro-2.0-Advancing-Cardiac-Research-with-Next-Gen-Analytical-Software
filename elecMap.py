@@ -304,10 +304,10 @@ def grad_cam(data):
 
     heatmap = cm.jet(heatmap)[:, :, :3]
     superimposed_img = heatmap * 0.4 + data
-    st.image(superimposed_img.astype(np.uint8), caption="Grad-CAM Output", use_column_width=True)
+    st.image(superimposed_img.astype(np.uint8), caption="Grad-CAM Output", use_column_width=False, width=300)  # Adjust width to 300 pixels
 
 def ground_truth_display(data):
-    st.image(data, caption="Ground Truth", use_column_width=True)
+    st.image(data, caption="Ground Truth", use_column_width=False, width=300)  # Adjust width to 300 pixels
 
 def log_likelihood_density(data):
     density, bins, _ = plt.hist(data.ravel(), bins=256, density=True)
@@ -336,7 +336,7 @@ def main():
         return
 
     if img is not None and img_data is not None:
-        st.image(img, use_column_width=True)
+        st.image(img, use_column_width=False, width=300)  # Adjust width to 300 pixels
 
         if st.sidebar.checkbox("Velocity Analysis"):
             velocity_analysis(img_data)
