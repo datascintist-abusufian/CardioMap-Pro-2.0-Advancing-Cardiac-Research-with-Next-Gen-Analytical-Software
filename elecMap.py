@@ -190,9 +190,6 @@ def main():
         if ground_truth is not None and st.sidebar.checkbox("Accuracy Display"):
             accuracy_display(img_data, ground_truth)
 
-if __name__ == "__main__":
-    main()
-
 def electromapping(data):
     electromap = np.fft.fft2(data)
     log_electromap = np.log1p(np.abs(electromap))
