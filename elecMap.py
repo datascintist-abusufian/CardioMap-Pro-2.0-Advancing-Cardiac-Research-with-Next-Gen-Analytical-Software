@@ -312,7 +312,7 @@ def ground_truth_display(data):
 def log_likelihood_density(data):
     density, bins, _ = plt.hist(data.ravel(), bins=256, density=True)
     log_likelihood = np.log(density + 1e-9)  # Adding a small constant to avoid log(0)
-    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
+    fig, ax = plt.subplots(figsize=(3, 2))  # Set figure size to 5x5 inches
     ax.plot(bins[:-1], log_likelihood, label='Log Likelihood')
     ax.set_xlabel('Pixel Intensity')
     ax.set_ylabel('Log Likelihood')
