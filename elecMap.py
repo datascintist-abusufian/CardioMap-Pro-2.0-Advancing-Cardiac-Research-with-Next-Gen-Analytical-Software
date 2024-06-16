@@ -168,6 +168,31 @@ def accuracy_display(data, ground_truth):
     
     st.image(rgb_image, caption="Disease Area Highlighted", use_column_width=False, width=300)
 
+# Main function update
+def main():
+    st.title("Image Viewer and Data Analysis")
+
+    # Load ground truth data
+    ground_truth_data = load_ground_truth_data(image_files)
+
+    file_index = st.sidebar.selectbox("Select an image", range(len(image_files)), format_func=lambda x: image_files[x].split('/')[-1])
+    img, img_data, success = load_image(image_files[file_index])
+    image_name = image_files[file_index].split('/')[-1].split('.')[0]
+    ground_truth = ground_truth_data.get(image_name)
+
+    if not success:
+        st.error(f"Failed to load image: {image_files[file_index]}")
+        return
+
+    if img is not None and img_data is not None:
+        st.image(img, use_column_width=False, width=300)  # Adjust width to 300 pixels
+
+        if ground_truth is not None and st.sidebar.checkbox("Accuracy Display"):
+            accuracy_display(img_data, ground_truth)
+
+if __name__ == "__main__":
+    main()
+
 def electromapping(data):
     electromap = np.fft.fft2(data)
     log_electromap = np.log1p(np.abs(electromap))
