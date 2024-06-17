@@ -8,18 +8,42 @@ import matplotlib.cm as cm
 import torch
 from torch.autograd import Variable
 from torchvision import models, transforms
+import sys
 
-@st.cache(allow_output_mutation=True)
+# Handle potential recursion limits for large images
+sys.setrecursionlimit(10000)
+
+# List of image paths provided
+image_files = [
+    "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
+    "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2024_jpg.rf.dc5b4863b6e5730b5c59b1d25b0b9611.jpg",
+    "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2025_jpg.rf.975b93d5d4d68bb0306fde3ce8e37e86.jpg",
+    # Add the rest of the image URLs here
+]
+
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def load_image(url):
     response = requests.get(url)
     if response.status_code == 200:
         content = BytesIO(response.content)
         img = Image.open(content).convert('L')
         img_data = np.array(img)
-        return img, img_data
+        return img, img_data, True
     else:
-        st.error("Failed to load data from URL.")
-        return None, None
+        return None, None, False
+
+@st.cache(allow_output_mutation=True)
+def load_ground_truth_data(image_files):
+    ground_truth_data = {}
+    for image_file in image_files:
+        image_name = image_file.split('/')[-1].split('.')[0]  # Assuming ground truth files have a similar name
+        ground_truth_url = f'https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/{image_name}_ground_truth.npy'
+        response = requests.get(ground_truth_url)
+        if response.status_code == 200:
+            ground_truth_data[image_name] = np.load(BytesIO(response.content))
+        else:
+            st.warning(f"Ground truth not found for {image_name}")
+    return ground_truth_data
 
 @st.cache(allow_output_mutation=True)
 def download_weights():
@@ -38,28 +62,45 @@ def velocity_analysis(data):
     st.write(f"Standard deviation of pixel values: {std}")
 
 def histogram_analysis(data):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(3, 2))  # Set figure size to 3x2 inches
     ax.hist(data.ravel(), bins=256, color='orange', alpha=0.5)
     st.pyplot(fig)
 
-def accuracy_display(data):
+def accuracy_display(data, ground_truth):
     threshold = 128
-    accuracy = np.mean(data > threshold)
-    st.write(f"Proportion of pixels above threshold: {accuracy}")
+    prediction = data > threshold
+    accuracy = np.mean(prediction == ground_truth)
+    st.write(f"Segmentation Accuracy: {accuracy}")
+
+    # Highlight the diseased areas on the original image
+    highlighted_image = np.copy(data)
+    highlighted_image[prediction == 1] = 255  # Mark the segmented areas with white color
+    
+    # Create an RGB image for visualization
+    rgb_image = np.stack([data]*3, axis=-1)
+    rgb_image[..., 0] = highlighted_image  # Overlay the highlighted areas on the red channel
+    
+    st.image(rgb_image, caption="Disease Area Highlighted", use_column_width=False, width=300)
 
 def electromapping(data):
     electromap = np.fft.fft2(data)
     log_electromap = np.log1p(np.abs(electromap))
     normalized_electromap = (log_electromap - np.min(log_electromap)) / (np.max(log_electromap) - np.min(log_electromap))
     colored_electromap = cm.hot(normalized_electromap)
-    st.image(colored_electromap, use_column_width=True)
+    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
+    ax.imshow(colored_electromap)
+    ax.set_title('Electromapping')
+    st.pyplot(fig)
 
 def signal_processing(data):
     processed_signal = np.fft.ifft2(data)
     abs_processed_signal = np.abs(processed_signal)
     log_processed_signal = np.log1p(abs_processed_signal)
     normalized_signal = (log_processed_signal - np.min(log_processed_signal)) / (np.max(log_processed_signal) - np.min(log_processed_signal))
-    st.image(normalized_signal, use_column_width=True)
+    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
+    ax.imshow(normalized_signal, cmap='gray')
+    ax.set_title('Signal Processing')
+    st.pyplot(fig)
 
 def region_selection(data):
     max_row, max_col = data.shape[0], data.shape[1]
@@ -108,7 +149,7 @@ def activation_map(data):
         return
 
     activation_map = activation_map.astype(np.float32)
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(5, 5))  # Set figure size to 5x5 inches
     cax = ax.imshow(activation_map, cmap='hot', interpolation='nearest')
     ax.set_title('Activation Map')
     fig.colorbar(cax, ax=ax)
@@ -156,9 +197,11 @@ def grad_cam(data):
     input_tensor = preprocess(data).unsqueeze(0)
     input_tensor = Variable(input_tensor, requires_grad=True)
 
+    activations = []
+
     def extract_layer(layer, input, output):
-        return output
-    
+        activations.append(output)
+
     handle = model.layer4[1].register_forward_hook(extract_layer)
     output = model(input_tensor)
     handle.remove()
@@ -171,8 +214,8 @@ def grad_cam(data):
     gradients = input_tensor.grad[0]
     pooled_gradients = torch.mean(gradients, dim=[1, 2])
 
-    activations = model.layer4[1].output[0]
-    for i in range(512):
+    activations = activations[0][0]
+    for i in range(activations.shape[0]):
         activations[i, ...] *= pooled_gradients[i]
 
     heatmap = torch.mean(activations, dim=0).detach().numpy()
@@ -185,15 +228,15 @@ def grad_cam(data):
 
     heatmap = cm.jet(heatmap)[:, :, :3]
     superimposed_img = heatmap * 0.4 + data
-    st.image(superimposed_img.astype(np.uint8), caption="Grad-CAM Output", use_column_width=True)
+    st.image(superimposed_img.astype(np.uint8), caption="Grad-CAM Output", use_column_width=False, width=300)  # Adjust width to 300 pixels
 
-def ground_truth(data):
-    st.image(data, caption="Ground Truth", use_column_width=True)
+def ground_truth_display(data):
+    st.image(data, caption="Ground Truth", use_column_width=False, width=300)  # Adjust width to 300 pixels
 
 def log_likelihood_density(data):
     density, bins, _ = plt.hist(data.ravel(), bins=256, density=True)
     log_likelihood = np.log(density + 1e-9)  # Adding a small constant to avoid log(0)
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(3, 2))  # Set figure size to 3x2 inches
     ax.plot(bins[:-1], log_likelihood, label='Log Likelihood')
     ax.set_xlabel('Pixel Intensity')
     ax.set_ylabel('Log Likelihood')
@@ -204,18 +247,20 @@ def log_likelihood_density(data):
 def main():
     st.title("Image Viewer and Data Analysis")
 
-    image_files = [
-        "https://github.com/datascintist-abusufian/CardioMap-Pro-2.0-Advancing-Cardiac-Research-with-Next-Gen-Analytical-Software/raw/main/Train-/original_2D_01_2023_jpg.rf.08fb9bb2f436753819831dd5e4b8e0c2.jpg",
-       Here's the continuation and completion of the code:
-
-```python
-        # Add more JPG image URLs as needed
-    ]
+    # Load ground truth data
+    ground_truth_data = load_ground_truth_data(image_files)
 
     file_index = st.sidebar.selectbox("Select an image", range(len(image_files)), format_func=lambda x: image_files[x].split('/')[-1])
-    img, img_data = load_image(image_files[file_index])
+    img, img_data, success = load_image(image_files[file_index])
+    image_name = image_files[file_index].split('/')[-1].split('.')[0]
+    ground_truth = ground_truth_data.get(image_name)
+
+    if not success:
+        st.error(f"Failed to load image: {image_files[file_index]}")
+        return
+
     if img is not None and img_data is not None:
-        st.image(img, use_column_width=True)
+        st.image(img, use_column_width=False, width=300)  # Adjust width to 300 pixels
 
         if st.sidebar.checkbox("Velocity Analysis"):
             velocity_analysis(img_data)
@@ -223,8 +268,8 @@ def main():
         if st.sidebar.checkbox("Histogram Analysis"):
             histogram_analysis(img_data)
 
-        if st.sidebar.checkbox("Accuracy Display"):
-            accuracy_display(img_data)
+        if ground_truth is not None and st.sidebar.checkbox("Accuracy Display"):
+            accuracy_display(img_data, ground_truth)
 
         if st.sidebar.checkbox("Electromapping"):
             electromapping(img_data)
@@ -256,8 +301,8 @@ def main():
         if st.sidebar.checkbox("Grad-CAM"):
             grad_cam(img_data)
             
-        if st.sidebar.checkbox("Ground Truth"):
-            ground_truth(img_data)
+        if ground_truth is not None and st.sidebar.checkbox("Ground Truth"):
+            ground_truth_display(ground_truth)
             
         if st.sidebar.checkbox("Log Likelihood vs Density"):
             log_likelihood_density(img_data)
